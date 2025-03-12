@@ -61,7 +61,8 @@ export function parseEquation(equationString: string): {
     // Split into left and right sides
     const [leftSide, rightSide] = equationString.split("=").map((s) => s.trim())
 
-    // Check for differential notation (dy/dx, d²y/dx², etc.)
+    // Check for differential notation patterns
+    // This handles various forms like dy/dx, d^2y/dx^2, etc.
     const isDifferential = leftSide.includes("d") && leftSide.includes("/")
 
     // Parse with mathjs
@@ -91,23 +92,47 @@ export function parseEquation(equationString: string): {
     extractSymbols(expr)
 
     // Determine which symbols are variables vs parameters
-    // For simplicity, we'll consider 'x' and 't' as the independent variables
-    // and any symbol on the left side as a dependent variable
     const independentVars = new Set(["x", "t"])
     const dependentVars = new Set<string>()
 
     if (isDifferential) {
-      // Extract dependent variable from left side (e.g., 'y' from 'dy/dx')
-      const match = leftSide.match(/d(\w+)\/d/)
+      // Extract dependent variable from left side using more robust regex patterns
+      // This handles forms like dy/dx, d^2y/dx^2, d^2y/dt^2, etc.
+
+      // First, try to match standard first derivative pattern: dy/dx or dy/dt
+      let match = leftSide.match(/d([a-zA-Z][a-zA-Z0-9]*)\/d[xt]/)
+
+      // If that doesn't work, try to match second derivative pattern: d^2y/dx^2 or d^2y/dt^2
+      if (!match) {
+        match = leftSide.match(/d\^?2([a-zA-Z][a-zA-Z0-9]*)\/d[xt]\^?2/)
+      }
+
+      // If that doesn't work, try a more general pattern
+      if (!match) {
+        match = leftSide.match(/d\^?\d*([a-zA-Z][a-zA-Z0-9]*)\/d[xt]\^?\d*/)
+      }
+
       if (match && match[1]) {
         dependentVars.add(match[1])
+      } else {
+        // If we can't extract from the left side, check if the left side is a variable
+        if (leftSide.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
+          dependentVars.add(leftSide)
+        }
       }
     } else {
       // For algebraic equations, the left side is typically a variable
-      if (leftSide.match(/^\w+$/)) {
+      if (leftSide.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
         dependentVars.add(leftSide)
       }
     }
+    // For harmonic oscillator and similar cases, look for common variable names
+    // if they appear in the equation
+    ;["y", "u", "v", "w", "z"].forEach((commonVar) => {
+      if (symbols.has(commonVar) && !dependentVars.has(commonVar)) {
+        dependentVars.add(commonVar)
+      }
+    })
 
     // Classify remaining symbols as parameters
     const parameters = Array.from(symbols).filter(

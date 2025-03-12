@@ -4,7 +4,7 @@ import { useEquation } from "@/context/equation-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Define some example equations
+// Update the examples to use the correct notation for second derivatives
 const examples = [
   {
     name: "Exponential Growth",
@@ -27,7 +27,7 @@ const examples = [
   },
   {
     name: "Harmonic Oscillator",
-    equation: "d²y/dt² = -k*y",
+    equation: "d^2y/dt^2 = -k*y",
     variables: [{ name: "y" }, { name: "v" }],
     parameters: [{ name: "k", value: 1.0 }],
     initialConditions: [
@@ -38,7 +38,7 @@ const examples = [
   },
   {
     name: "Damped Oscillator",
-    equation: "d²y/dt² = -k*y - c*dy/dt",
+    equation: "d^2y/dt^2 = -k*y - c*dy/dt",
     variables: [{ name: "y" }, { name: "v" }],
     parameters: [
       { name: "k", value: 1.0 },
@@ -55,6 +55,7 @@ const examples = [
 export function ExampleEquations() {
   const { dispatch } = useEquation()
 
+  // Modify the loadExample function to update the input field
   const loadExample = (example: (typeof examples)[0]) => {
     // Reset state
     dispatch({ type: "RESET" })
@@ -95,6 +96,13 @@ export function ExampleEquations() {
         },
       })
     })
+
+    // Force update the equation input field in the EquationInput component
+    // This is done by dispatching a custom event that the EquationInput component will listen for
+    const event = new CustomEvent("update-equation-input", {
+      detail: { equation: example.equation },
+    })
+    window.dispatchEvent(event)
   }
 
   return (

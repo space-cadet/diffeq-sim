@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useEquation } from "@/context/equation-context"
 import { parseEquation } from "@/lib/equation-parser"
 import { Button } from "@/components/ui/button"
@@ -67,12 +67,29 @@ export function EquationInput() {
     })
   }
 
+  useEffect(() => {
+    const handleUpdateEquation = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (customEvent.detail && customEvent.detail.equation) {
+        setEquationInput(customEvent.detail.equation)
+      }
+    }
+
+    window.addEventListener("update-equation-input", handleUpdateEquation)
+
+    return () => {
+      window.removeEventListener("update-equation-input", handleUpdateEquation)
+    }
+  }, [])
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Differential Equation</CardTitle>
         <CardDescription>
-          Enter your differential equation (e.g., dy/dx = -k*y)
+          Enter your differential equation (e.g., dy/dt = -k*y)
+          <br />
+          For second derivatives, use notation like: d^2y/dt^2 = -k*y
           <br />
           For systems of equations, enter each equation on a new line
         </CardDescription>
