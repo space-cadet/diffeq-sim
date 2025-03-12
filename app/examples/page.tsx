@@ -1,4 +1,6 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function ExamplesPage() {
   return (
@@ -19,6 +21,11 @@ export default function ExamplesPage() {
               Describes the motion of a mass on a spring when displaced from its equilibrium position.
             </p>
           </CardContent>
+          <CardFooter>
+            <Link href="/simulator">
+              <Button>Try in Simulator</Button>
+            </Link>
+          </CardFooter>
         </Card>
 
         <Card>
@@ -32,6 +39,11 @@ export default function ExamplesPage() {
             </p>
             <p className="text-muted-foreground">Models population growth with limited resources.</p>
           </CardContent>
+          <CardFooter>
+            <Link href="/simulator">
+              <Button>Try in Simulator</Button>
+            </Link>
+          </CardFooter>
         </Card>
 
         <Card>
@@ -45,6 +57,11 @@ export default function ExamplesPage() {
             </p>
             <p className="text-muted-foreground">Describes the motion of a simple pendulum.</p>
           </CardContent>
+          <CardFooter>
+            <Link href="/simulator">
+              <Button>Try in Simulator</Button>
+            </Link>
+          </CardFooter>
         </Card>
 
         <Card>
@@ -60,6 +77,11 @@ export default function ExamplesPage() {
             </p>
             <p className="text-muted-foreground">Models predator-prey interactions in biological systems.</p>
           </CardContent>
+          <CardFooter>
+            <Link href="/simulator">
+              <Button>Try in Simulator</Button>
+            </Link>
+          </CardFooter>
         </Card>
       </div>
     </div>

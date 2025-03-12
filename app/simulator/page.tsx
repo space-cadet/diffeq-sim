@@ -1,12 +1,25 @@
+"use client"
 import { EquationInput } from "@/components/equation-input"
 import { ParameterConfig } from "@/components/parameter-config"
 import { InitialConditions } from "@/components/initial-conditions"
 import { SolverSettings } from "@/components/solver-settings"
+import { SolutionPlot } from "@/components/solution-plot"
+import { PhasePortrait } from "@/components/phase-portrait"
+import { ExampleEquations } from "@/components/example-equations"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Play } from "lucide-react"
+import { Play, RefreshCw } from "lucide-react"
+import { useEquationSolver } from "@/hooks/use-equation-solver"
+import { useEquation } from "@/context/equation-context"
 
 export default function SimulatorPage() {
+  const { state, dispatch } = useEquation()
+  const { solution, isComputing, error, solve } = useEquationSolver()
+
+  const handleReset = () => {
+    dispatch({ type: "RESET" })
+  }
+
   return (
     <div className="container py-8">
       <h1 className="text-3xl font-bold mb-6">Differential Equation Simulator</h1>
@@ -18,12 +31,16 @@ export default function SimulatorPage() {
           <Card>
             <CardHeader>
               <CardTitle>Solution Visualization</CardTitle>
-              <CardDescription>The solution to your differential equation will appear here</CardDescription>
+              <CardDescription>The solution to your differential equation</CardDescription>
             </CardHeader>
-            <CardContent className="h-[400px] flex items-center justify-center bg-muted/50">
-              <p className="text-muted-foreground">Visualization will be implemented in Phase 3</p>
+            <CardContent>
+              <SolutionPlot solution={solution} isComputing={isComputing} error={error} />
             </CardContent>
           </Card>
+
+          {state.variables.length >= 2 && solution && <PhasePortrait solution={solution} />}
+
+          <ExampleEquations />
         </div>
 
         <div className="space-y-6">
@@ -31,10 +48,17 @@ export default function SimulatorPage() {
           <InitialConditions />
           <SolverSettings />
 
-          <Button className="w-full" size="lg">
-            <Play className="mr-2 h-4 w-4" />
-            Solve Equation
-          </Button>
+          <div className="flex gap-4">
+            <Button className="flex-1" size="lg" onClick={solve} disabled={isComputing}>
+              <Play className="mr-2 h-4 w-4" />
+              Solve Equation
+            </Button>
+
+            <Button variant="outline" size="lg" onClick={handleReset}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Reset
+            </Button>
+          </div>
         </div>
       </div>
     </div>

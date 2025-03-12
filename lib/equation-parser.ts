@@ -5,9 +5,50 @@ export function parseEquation(equationString: string): {
   variables: string[]
   parameters: string[]
   error?: string
+  isSystem?: boolean
 } {
   try {
-    // Basic validation
+    // Check if this is a system of equations (contains multiple lines)
+    const lines = equationString
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+
+    if (lines.length > 1) {
+      // Process as a system of equations
+      const results = lines.map((line) => parseEquation(line))
+
+      // Check if all equations are valid
+      const isValid = results.every((result) => result.isValid)
+
+      if (!isValid) {
+        const errors = results
+          .filter((result) => !result.isValid)
+          .map((result) => result.error)
+          .join("; ")
+
+        return {
+          isValid: false,
+          variables: [],
+          parameters: [],
+          error: `Invalid system of equations: ${errors}`,
+          isSystem: true,
+        }
+      }
+
+      // Combine variables and parameters from all equations
+      const variables = Array.from(new Set(results.flatMap((result) => result.variables)))
+      const parameters = Array.from(new Set(results.flatMap((result) => result.parameters)))
+
+      return {
+        isValid: true,
+        variables,
+        parameters,
+        isSystem: true,
+      }
+    }
+
+    // Basic validation for a single equation
     if (!equationString.includes("=")) {
       return {
         isValid: false,

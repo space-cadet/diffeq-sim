@@ -6,7 +6,7 @@ import { useState } from "react"
 import { useEquation } from "@/context/equation-context"
 import { parseEquation } from "@/lib/equation-parser"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -17,7 +17,7 @@ export function EquationInput() {
   const [equationInput, setEquationInput] = useState(state.equation)
   const [error, setError] = useState<string | null>(null)
 
-  const handleEquationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEquationChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEquationInput(e.target.value)
   }
 
@@ -71,21 +71,26 @@ export function EquationInput() {
     <Card>
       <CardHeader>
         <CardTitle>Differential Equation</CardTitle>
-        <CardDescription>Enter your differential equation (e.g., dy/dx = -k*y)</CardDescription>
+        <CardDescription>
+          Enter your differential equation (e.g., dy/dx = -k*y)
+          <br />
+          For systems of equations, enter each equation on a new line
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid w-full items-center gap-4">
           <div className="flex flex-col space-y-1.5">
             <Label htmlFor="equation">Equation</Label>
-            <div className="flex space-x-2">
-              <Input
-                id="equation"
-                value={equationInput}
-                onChange={handleEquationChange}
-                placeholder="Enter your equation (e.g., dy/dx = -k*y)"
-              />
-              <Button onClick={handleEquationSubmit}>Apply</Button>
-            </div>
+            <Textarea
+              id="equation"
+              value={equationInput}
+              onChange={handleEquationChange}
+              placeholder="Enter your equation (e.g., dy/dx = -k*y)"
+              rows={3}
+            />
+            <Button onClick={handleEquationSubmit} className="mt-2 self-end">
+              Apply
+            </Button>
           </div>
 
           {error && (
