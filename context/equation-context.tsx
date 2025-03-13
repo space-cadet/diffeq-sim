@@ -71,14 +71,27 @@ function equationReducer(state: EquationState, action: Action): EquationState {
       }
 
     case "SET_INITIAL_CONDITION":
-      return {
-        ...state,
-        initialConditions: [
-          ...state.initialConditions.filter(
-            (ic) => !(ic.variable === action.payload.variable && ic.order === action.payload.order),
+      // First check if an initial condition for this variable and order already exists
+      const existingInitialCondition = state.initialConditions.find(
+        (ic) => ic.variable === action.payload.variable && ic.order === action.payload.order,
+      )
+
+      if (existingInitialCondition) {
+        // Update the existing initial condition
+        return {
+          ...state,
+          initialConditions: state.initialConditions.map((ic) =>
+            ic.variable === action.payload.variable && ic.order === action.payload.order
+              ? { ...ic, value: action.payload.value }
+              : ic,
           ),
-          { id: uuidv4(), ...action.payload },
-        ],
+        }
+      } else {
+        // Add a new initial condition
+        return {
+          ...state,
+          initialConditions: [...state.initialConditions, { id: uuidv4(), ...action.payload }],
+        }
       }
 
     case "UPDATE_INITIAL_CONDITION":

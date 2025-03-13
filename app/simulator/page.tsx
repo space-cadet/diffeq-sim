@@ -1,18 +1,20 @@
 "use client"
 
 import { useEffect } from "react"
-import { EquationInput } from "@/components/equation-input"
+import { EnhancedEquationInput } from "@/components/enhanced-equation-input"
+import { EquationAnalysis } from "@/components/equation-analysis"
 import { ParameterConfig } from "@/components/parameter-config"
 import { InitialConditions } from "@/components/initial-conditions"
 import { SolverSettings } from "@/components/solver-settings"
-import { SolutionPlot } from "@/components/solution-plot"
-import { PhasePortrait } from "@/components/phase-portrait"
+import { MethodSelector } from "@/components/method-selector"
+import { EnhancedSolutionPlot } from "@/components/enhanced-solution-plot"
 import { ExampleEquations } from "@/components/example-equations"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Play, RefreshCw } from "lucide-react"
 import { useEquationSolver } from "@/hooks/use-equation-solver"
 import { useEquation } from "@/context/equation-context"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function SimulatorPage() {
   const { state, dispatch } = useEquation()
@@ -89,7 +91,7 @@ export default function SimulatorPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <EquationInput />
+          <EnhancedEquationInput />
 
           <Card>
             <CardHeader>
@@ -97,19 +99,44 @@ export default function SimulatorPage() {
               <CardDescription>The solution to your differential equation</CardDescription>
             </CardHeader>
             <CardContent>
-              <SolutionPlot solution={solution} isComputing={isComputing} error={error} />
+              <EnhancedSolutionPlot solution={solution} isComputing={isComputing} error={error} />
             </CardContent>
           </Card>
 
-          {state.variables.length >= 2 && solution && <PhasePortrait solution={solution} />}
-
-          <ExampleEquations />
+          <Tabs defaultValue="examples">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="examples">Example Equations</TabsTrigger>
+              <TabsTrigger value="analysis">Equation Analysis</TabsTrigger>
+            </TabsList>
+            <TabsContent value="examples">
+              <ExampleEquations />
+            </TabsContent>
+            <TabsContent value="analysis">
+              <EquationAnalysis />
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="space-y-6">
-          <ParameterConfig />
-          <InitialConditions />
-          <SolverSettings />
+          <Tabs defaultValue="parameters">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="parameters">Parameters</TabsTrigger>
+              <TabsTrigger value="initial">Initial Conditions</TabsTrigger>
+              <TabsTrigger value="solver">Solver</TabsTrigger>
+            </TabsList>
+            <TabsContent value="parameters">
+              <ParameterConfig />
+            </TabsContent>
+            <TabsContent value="initial">
+              <InitialConditions />
+            </TabsContent>
+            <TabsContent value="solver">
+              <div className="space-y-6">
+                <MethodSelector />
+                <SolverSettings />
+              </div>
+            </TabsContent>
+          </Tabs>
 
           <div className="flex gap-4">
             <Button className="flex-1" size="lg" onClick={solve} disabled={isComputing}>
