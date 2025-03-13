@@ -16,10 +16,12 @@ export function PhasePortrait({ solution }: PhasePortraitProps) {
   useEffect(() => {
     if (!plotRef.current || !solution || state.variables.length < 2) return
 
-    // For phase portrait, we need at least 2 variables
+    // Handle complex numbers in phase portrait
+    const isComplex = solution.y.some((y) => y.some((val) => typeof val === 'object' && val !== null && 're' in val))
+
     const trace = {
-      x: solution.y.map((y) => y[0]),
-      y: solution.y.map((y) => y[1]),
+      x: solution.y.map((y) => isComplex ? Math.sqrt(y[0].re * y[0].re + y[0].im * y[0].im) : y[0]),
+      y: solution.y.map((y) => isComplex ? Math.sqrt(y[1].re * y[1].re + y[1].im * y[1].im) : y[1]),
       type: "scatter",
       mode: "lines",
       name: `${state.variables[0].name} vs ${state.variables[1].name}`,
@@ -33,13 +35,17 @@ export function PhasePortrait({ solution }: PhasePortraitProps) {
       title: "Phase Portrait",
       xaxis: {
         title: state.variables[0].name,
+        gridcolor: '#e0e0e0'
       },
       yaxis: {
         title: state.variables[1].name,
+        gridcolor: '#e0e0e0'
       },
       margin: { t: 40, r: 20, b: 40, l: 50 },
       autosize: true,
       responsive: true,
+      plot_bgcolor: '#f5f5f5',
+      paper_bgcolor: '#ffffff'
     })
 
     // Cleanup

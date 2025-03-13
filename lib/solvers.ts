@@ -2,7 +2,7 @@ import * as math from "mathjs"
 import type { SolverMethod } from "@/types/equation"
 
 // Define the type for a differential equation function
-export type DiffEqFunction = (t: number, y: number[], params: Record<string, number>) => number[]
+export type DiffEqFunction = (t: number, y: number[], params: Record<string, number>, history?: Record<number, number[]>) => number[]
 
 // Parse a string equation into a function
 export function parseEquationToFunction(
@@ -11,6 +11,16 @@ export function parseEquationToFunction(
   parameters: string[],
 ): DiffEqFunction | null {
   try {
+    // Detect delay terms and add τ to parameters if found
+    const delayRegex = /(\w+)\(t\s*-\s*(\w+)\)/g;
+    let match;
+    while ((match = delayRegex.exec(equationString))) {
+      const delayParam = match[2];
+      if (!parameters.includes(delayParam)) {
+        parameters.push(delayParam);
+      }
+    }
+
     // Basic validation
     if (!equationString.includes("=")) {
       console.error("Equation must contain an equals sign (=)")
@@ -21,7 +31,7 @@ export function parseEquationToFunction(
     const [leftSide, rightSide] = equationString.split("=").map((s) => s.trim())
 
     // Create a function that evaluates the expression with the given variables and parameters
-    return (t: number, y: number[], params: Record<string, number>): number[] => {
+    return (t: number, y: number[], params: Record<string, number>, history?: Record<number, number[]>): number[] => {
       try {
         // Create a scope with the current values
         const scope: Record<string, number> = {
@@ -34,21 +44,27 @@ export function parseEquationToFunction(
           scope[variable] = y[index]
         })
 
+        // Add history values to scope
+        if (history) {
+          Object.entries(history).forEach(([time, values]) => {
+            variables.forEach((variable, index) => {
+              scope[`${variable}(t-${t - parseFloat(time)})`] = values[index];
+            });
+          });
+        }
+
         // Evaluate the expression using mathjs evaluate
-        // This is more robust than compiling the expression
         const result = math.evaluate(rightSide, scope)
 
-        // For now, we're assuming a single equation
         return [result]
       } catch (error) {
-        console.error("Error evaluating equation:", error)
-        // Return a default value to prevent crashing
-        return [0]
+        console.error("Error evaluating equation:", error);
+        return [0];
       }
     }
   } catch (error) {
-    console.error("Error parsing equation:", error)
-    return null
+    console.error("Error parsing equation:", error);
+    return null;
   }
 }
 
@@ -65,6 +81,7 @@ export function solveEquation(
   // Initialize arrays to store results
   const tValues: number[] = [tStart]
   const yValues: number[][] = [initialConditions]
+  const history: Record<number, number[]> = { [tStart]: initialConditions }
 
   // Current time and state
   let t = tStart
@@ -78,28 +95,29 @@ export function solveEquation(
     try {
       switch (method) {
         case "euler":
-          nextY = eulerStep(diffEq, t, y, stepSize, parameters)
+          nextY = eulerStep(diffEq, t, y, stepSize, parameters, history)
           break
         case "rk4":
-          nextY = rk4Step(diffEq, t, y, stepSize, parameters)
+          nextY = rk4Step(diffEq, t, y, stepSize, parameters, history)
           break
         case "midpoint":
-          nextY = midpointStep(diffEq, t, y, stepSize, parameters)
+          nextY = midpointStep(diffEq, t, y, stepSize, parameters, history)
           break
         case "heun":
-          nextY = heunStep(diffEq, t, y, stepSize, parameters)
+          nextY = heunStep(diffEq, t, y, stepSize, parameters, history)
           break
         default:
-          nextY = eulerStep(diffEq, t, y, stepSize, parameters)
+          nextY = eulerStep(diffEq, t, y, stepSize, parameters, history)
       }
 
       // Update time and state
       t += stepSize
       y = nextY
 
-      // Store results
+      // Store results and history
       tValues.push(t)
       yValues.push([...y])
+      history[t] = [...y]
     } catch (error) {
       console.error("Error in solver step:", error)
       // Skip this step if there's an error
@@ -110,30 +128,31 @@ export function solveEquation(
   return { t: tValues, y: yValues }
 }
 
-// Euler method
+// Update all solver methods to accept history parameter
 function eulerStep(
   diffEq: DiffEqFunction,
   t: number,
   y: number[],
   h: number,
   params: Record<string, number>,
+  history: Record<number, number[]>,
 ): number[] {
-  const dydt = diffEq(t, y, params)
+  const dydt = diffEq(t, y, params, history)
   return y.map((yi, i) => yi + h * dydt[i])
 }
 
 // Runge-Kutta 4th order method
-function rk4Step(diffEq: DiffEqFunction, t: number, y: number[], h: number, params: Record<string, number>): number[] {
-  const k1 = diffEq(t, y, params)
+function rk4Step(diffEq: DiffEqFunction, t: number, y: number[], h: number, params: Record<string, number>, history: Record<number, number[]>): number[] {
+  const k1 = diffEq(t, y, params, history)
 
   const k2y = y.map((yi, i) => yi + (h * k1[i]) / 2)
-  const k2 = diffEq(t + h / 2, k2y, params)
+  const k2 = diffEq(t + h / 2, k2y, params, history)
 
   const k3y = y.map((yi, i) => yi + (h * k2[i]) / 2)
-  const k3 = diffEq(t + h / 2, k3y, params)
+  const k3 = diffEq(t + h / 2, k3y, params, history)
 
   const k4y = y.map((yi, i) => yi + h * k3[i])
-  const k4 = diffEq(t + h, k4y, params)
+  const k4 = diffEq(t + h, k4y, params, history)
 
   return y.map((yi, i) => yi + (h * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i])) / 6)
 }
@@ -145,21 +164,29 @@ function midpointStep(
   y: number[],
   h: number,
   params: Record<string, number>,
+  history: Record<number, number[]>,
 ): number[] {
-  const k1 = diffEq(t, y, params)
+  const k1 = diffEq(t, y, params, history)
 
   const k2y = y.map((yi, i) => yi + (h * k1[i]) / 2)
-  const k2 = diffEq(t + h / 2, k2y, params)
+  const k2 = diffEq(t + h / 2, k2y, params, history)
 
   return y.map((yi, i) => yi + h * k2[i])
 }
 
 // Heun's method (Improved Euler)
-function heunStep(diffEq: DiffEqFunction, t: number, y: number[], h: number, params: Record<string, number>): number[] {
-  const k1 = diffEq(t, y, params)
+function heunStep(
+  diffEq: DiffEqFunction,
+  t: number,
+  y: number[],
+  h: number,
+  params: Record<string, number>,
+  history: Record<number, number[]>,
+): number[] {
+  const k1 = diffEq(t, y, params, history)
 
   const yPredict = y.map((yi, i) => yi + h * k1[i])
-  const k2 = diffEq(t + h, yPredict, params)
+  const k2 = diffEq(t + h, yPredict, params, history)
 
   return y.map((yi, i) => yi + (h * (k1[i] + k2[i])) / 2)
 }

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useEquation } from "@/context/equation-context"
 import { parseEquationToFunction, solveEquation } from "@/lib/solvers"
 import { solveSecondOrderODE } from "@/lib/second-order-solver"
+import { analyzeEquation } from "@/lib/equation-analyzer"
 import {
   solveLogisticGrowth,
   solveExponentialGrowth,
@@ -18,6 +19,7 @@ export function useEquationSolver() {
   const [solution, setSolution] = useState<{ t: number[]; y: number[][] } | null>(null)
   const [isComputing, setIsComputing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<any>(null)
 
   const solve = () => {
     setIsComputing(true)
@@ -30,18 +32,14 @@ export function useEquationSolver() {
         parameterValues[param.name] = param.value
       })
 
-      // Identify the equation type
-      const equation = state.equation.toLowerCase()
+      // Analyze the equation to determine its properties and recommended solver
+      const analysis = analyzeEquation(state.equation)
+      setAnalysisResult(analysis)
 
-      // Check for common equation patterns
-      const isLogisticGrowth = equation.includes("r*") && equation.includes("*(1") && equation.includes("/k")
-      const isExponentialGrowth = equation.includes("r*") && !equation.includes("*(1")
-      const isHarmonicOscillator = equation.includes("d^2") && equation.includes("-k*") && !equation.includes("c*d")
-      const isDampedOscillator = equation.includes("d^2") && equation.includes("-k*") && equation.includes("c*d")
-      const isPendulum = equation.includes("sin(") || equation.includes("sin ")
-      const isLotkaVolterra = equation.includes("x*y") && equation.includes("\n")
+      // Use the special type from analysis to determine which specialized solver to use
+      const specialType = analysis.specialType
 
-      if (isPendulum) {
+      if (specialType === "Pendulum") {
         // Get parameters
         const g = parameterValues.g || 9.8
         const L = parameterValues.L || 1.0
@@ -68,7 +66,7 @@ export function useEquationSolver() {
         )
 
         setSolution(result)
-      } else if (isLotkaVolterra) {
+      } else if (specialType === "Lotka-Volterra") {
         // Get parameters
         const alpha = parameterValues.α || parameterValues.alpha || 1.0
         const beta = parameterValues.β || parameterValues.beta || 0.1
@@ -95,7 +93,7 @@ export function useEquationSolver() {
         )
 
         setSolution(result)
-      } else if (isLogisticGrowth) {
+      } else if (specialType === "Logistic") {
         // Get parameters
         const r = parameterValues.r || 1.0
         const K = parameterValues.K || 10.0
@@ -117,7 +115,7 @@ export function useEquationSolver() {
         )
 
         setSolution(result)
-      } else if (isExponentialGrowth) {
+      } else if (specialType === "Exponential") {
         // Get parameter
         const r = parameterValues.r || 0.5
 
@@ -137,7 +135,7 @@ export function useEquationSolver() {
         )
 
         setSolution(result)
-      } else if (isHarmonicOscillator) {
+      } else if (specialType === "Harmonic Oscillator") {
         // Get parameter
         const k = parameterValues.k || parameterValues.ω * parameterValues.ω || 1.0
 
@@ -162,7 +160,7 @@ export function useEquationSolver() {
         )
 
         setSolution(result)
-      } else if (isDampedOscillator) {
+      } else if (specialType === "Damped Oscillator") {
         // Get parameters
         const k = parameterValues.k || 1.0
         const c = parameterValues.c || 0.2
@@ -193,8 +191,8 @@ export function useEquationSolver() {
         // Extract variable names
         const variableNames = state.variables.map((v) => v.name)
 
-        // Check if this is a second-order equation
-        const isSecondOrder = equation.includes("d^2") || equation.includes("d²")
+        // Check if this is a second-order equation based on analysis
+        const isSecondOrder = analysis.order === 2
 
         if (isSecondOrder) {
           // For second-order equations, use our specialized solver
@@ -258,6 +256,7 @@ export function useEquationSolver() {
     isComputing,
     error,
     solve,
+    analysisResult,
   }
 }
 

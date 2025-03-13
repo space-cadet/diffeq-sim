@@ -5,17 +5,19 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useEquation } from "@/context/equation-context"
 import { parseEquation } from "@/lib/equation-parser"
+import { analyzeEquation } from "@/lib/equation-analyzer"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Info } from "lucide-react"
 
 export function EquationInput() {
   const { state, dispatch } = useEquation()
   const [equationInput, setEquationInput] = useState(state.equation)
   const [error, setError] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<any>(null)
 
   const handleEquationChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEquationInput(e.target.value)
@@ -26,15 +28,31 @@ export function EquationInput() {
 
     if (!result.isValid) {
       setError(result.error || "Invalid equation format")
+      setAnalysis(null)
       return
     }
 
     setError(null)
     dispatch({ type: "SET_EQUATION", payload: equationInput })
 
+    // Enhanced equation analysis with detailed feedback
+    const equationAnalysis = analyzeEquation(equationInput)
+    setAnalysis({
+      ...equationAnalysis,
+      detailedFeedback: {
+        variables: result.variables,
+        parameters: result.parameters,
+        isValid: result.isValid,
+        isSystem: result.isSystem
+      }
+    })
+
+    // Set the recommended solver method
+    if (equationAnalysis.recommendedMethod) {
+      dispatch({ type: "SET_METHOD", payload: equationAnalysis.recommendedMethod })
+    }
+
     // Update variables based on parsing result
-    // This is simplified - in a real app, you'd want to preserve existing variables
-    // and their properties when possible
     state.variables.forEach((v) => {
       if (!result.variables.includes(v.name)) {
         dispatch({ type: "REMOVE_VARIABLE", payload: v.id })
@@ -115,6 +133,28 @@ export function EquationInput() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {analysis && (
+            <Alert variant="default" className="bg-muted">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Equation Analysis</AlertTitle>
+              <AlertDescription>
+                <div className="mt-2 text-sm">
+                  <p>{analysis.explanation}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div><strong>Type:</strong> {analysis.type}</div>
+                    <div><strong>Order:</strong> {analysis.order}</div>
+                    <div><strong>Linear:</strong> {analysis.isLinear ? "Yes" : "No"}</div>
+                    <div><strong>Autonomous:</strong> {analysis.isAutonomous ? "Yes" : "No"}</div>
+                    {analysis.specialType !== "None" && (
+                      <div><strong>Special Type:</strong> {analysis.specialType}</div>
+                    )}
+                    <div><strong>Recommended Method:</strong> {analysis.recommendedMethod}</div>
+                  </div>
+                </div>
+              </AlertDescription>
             </Alert>
           )}
         </div>

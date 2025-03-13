@@ -48,7 +48,7 @@ export function parseEquation(equationString: string): {
       }
     }
 
-    // Basic validation for a single equation
+    // Enhanced validation for a single equation
     if (!equationString.includes("=")) {
       return {
         isValid: false,
@@ -61,20 +61,63 @@ export function parseEquation(equationString: string): {
     // Split into left and right sides
     const [leftSide, rightSide] = equationString.split("=").map((s) => s.trim())
 
-    // Check for differential notation patterns
+    // Check for advanced mathematical expressions
+    const advancedPatterns = [
+      /\[.*\]/, // Matrix notation
+      /\{.*\}/, // Piecewise functions
+      /\|.*\|/, // Absolute value
+      /\b(?:sum|prod|integral)\b/, // Summation, product, integral
+    ]
+
+    if (advancedPatterns.some((pattern) => pattern.test(rightSide))) {
+      return {
+        isValid: false,
+        variables: [],
+        parameters: [],
+        error: "Advanced mathematical expressions are not yet supported. Please use basic arithmetic operations and standard functions.",
+      }
+    }
+
+    // Enhanced differential notation patterns
     const isDifferential = leftSide.includes("d") && leftSide.includes("/")
+
+    if (isDifferential && !leftSide.match(/d\^?\d*[a-zA-Z\u03B8\u03C6]\/d[xt]\^?\d*/)) {
+      // Check for delayed differential notation
+      const delayedPattern = /d\^?\d*[a-zA-Z\u03B8\u03C6]\([xt][+-]\d+\)\/d[xt]\^?\d*/
+      if (!delayedPattern.test(leftSide)) {
+        return {
+          isValid: false,
+          variables: [],
+          parameters: [],
+          error: "Invalid differential notation. Please use format like dy/dt, d^2y/dt^2, or y(t-τ).",
+        }
+      }
+    }
+
+    if (isDifferential && !leftSide.match(/d\^?\d*[a-zA-Z\u03B8\u03C6]\/d[xt]\^?\d*/)) {
+      return {
+        isValid: false,
+        variables: [],
+        parameters: [],
+        error: "Invalid differential notation. Please use format like dy/dt or d^2y/dt^2.",
+      }
+    }
 
     // Parse with mathjs
     let expr
     try {
       expr = math.parse(rightSide)
     } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
       return {
         isValid: false,
         variables: [],
         parameters: [],
-        error: `Error parsing right side of equation: ${e instanceof Error ? e.message : String(e)}`,
-      }
+        error: `Error parsing right side of equation: ${errorMessage}. Please check your mathematical expression syntax. Common issues include:
+- Missing operators between terms
+- Unbalanced parentheses
+- Invalid function names
+- Incorrect use of mathematical constants`,      }
     }
 
     // Extract variables and parameters
