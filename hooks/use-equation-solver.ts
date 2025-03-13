@@ -9,6 +9,8 @@ import {
   solveExponentialGrowth,
   solveHarmonicOscillator,
   solveDampedOscillator,
+  solvePendulum,
+  solveLotkaVolterra,
 } from "@/lib/common-equations"
 
 export function useEquationSolver() {
@@ -32,18 +34,76 @@ export function useEquationSolver() {
       const equation = state.equation.toLowerCase()
 
       // Check for common equation patterns
-      const isLogisticGrowth = equation.includes("r*y*(1") && equation.includes("y/k")
-      const isExponentialGrowth = equation.includes("r*y") && !equation.includes("*(1")
-      const isHarmonicOscillator = equation.includes("d^2y") && equation.includes("-k*y") && !equation.includes("c*dy")
-      const isDampedOscillator = equation.includes("d^2y") && equation.includes("-k*y") && equation.includes("c*dy")
+      const isLogisticGrowth = equation.includes("r*") && equation.includes("*(1") && equation.includes("/k")
+      const isExponentialGrowth = equation.includes("r*") && !equation.includes("*(1")
+      const isHarmonicOscillator = equation.includes("d^2") && equation.includes("-k*") && !equation.includes("c*d")
+      const isDampedOscillator = equation.includes("d^2") && equation.includes("-k*") && equation.includes("c*d")
+      const isPendulum = equation.includes("sin(") || equation.includes("sin ")
+      const isLotkaVolterra = equation.includes("x*y") && equation.includes("\n")
 
-      if (isLogisticGrowth) {
+      if (isPendulum) {
+        // Get parameters
+        const g = parameterValues.g || 9.8
+        const L = parameterValues.L || 1.0
+
+        // Get initial conditions
+        const initialAngle =
+          state.initialConditions.find((ic) => (ic.variable === "θ" || ic.variable === "theta") && ic.order === 0)
+            ?.value || 0.5
+
+        const initialAngularVelocity =
+          state.initialConditions.find((ic) => (ic.variable === "ω" || ic.variable === "omega") && ic.order === 0)
+            ?.value || 0.0
+
+        // Solve using specialized solver
+        const result = solvePendulum(
+          g,
+          L,
+          initialAngle,
+          initialAngularVelocity,
+          state.timeRange.start,
+          state.timeRange.end,
+          state.stepSize,
+          state.method,
+        )
+
+        setSolution(result)
+      } else if (isLotkaVolterra) {
+        // Get parameters
+        const alpha = parameterValues.α || parameterValues.alpha || 1.0
+        const beta = parameterValues.β || parameterValues.beta || 0.1
+        const delta = parameterValues.δ || parameterValues.delta || 0.1
+        const gamma = parameterValues.γ || parameterValues.gamma || 1.0
+
+        // Get initial conditions
+        const initialPrey = state.initialConditions.find((ic) => ic.variable === "x" && ic.order === 0)?.value || 10.0
+        const initialPredator =
+          state.initialConditions.find((ic) => ic.variable === "y" && ic.order === 0)?.value || 5.0
+
+        // Solve using specialized solver
+        const result = solveLotkaVolterra(
+          alpha,
+          beta,
+          delta,
+          gamma,
+          initialPrey,
+          initialPredator,
+          state.timeRange.start,
+          state.timeRange.end,
+          state.stepSize,
+          state.method,
+        )
+
+        setSolution(result)
+      } else if (isLogisticGrowth) {
         // Get parameters
         const r = parameterValues.r || 1.0
         const K = parameterValues.K || 10.0
 
         // Get initial condition
-        const initialValue = state.initialConditions.find((ic) => ic.variable === "y" && ic.order === 0)?.value || 0.5
+        const initialValue =
+          state.initialConditions.find((ic) => (ic.variable === "y" || ic.variable === "P") && ic.order === 0)?.value ||
+          0.5
 
         // Solve using specialized solver
         const result = solveLogisticGrowth(
@@ -62,7 +122,9 @@ export function useEquationSolver() {
         const r = parameterValues.r || 0.5
 
         // Get initial condition
-        const initialValue = state.initialConditions.find((ic) => ic.variable === "y" && ic.order === 0)?.value || 1.0
+        const initialValue =
+          state.initialConditions.find((ic) => (ic.variable === "y" || ic.variable === "P") && ic.order === 0)?.value ||
+          1.0
 
         // Solve using specialized solver
         const result = solveExponentialGrowth(
@@ -77,13 +139,16 @@ export function useEquationSolver() {
         setSolution(result)
       } else if (isHarmonicOscillator) {
         // Get parameter
-        const k = parameterValues.k || 1.0
+        const k = parameterValues.k || parameterValues.ω * parameterValues.ω || 1.0
 
         // Get initial conditions
         const initialPosition =
-          state.initialConditions.find((ic) => ic.variable === "y" && ic.order === 0)?.value || 1.0
+          state.initialConditions.find((ic) => (ic.variable === "y" || ic.variable === "x") && ic.order === 0)?.value ||
+          1.0
+
         const initialVelocity =
-          state.initialConditions.find((ic) => ic.variable === "v" && ic.order === 0)?.value || 0.0
+          state.initialConditions.find((ic) => (ic.variable === "v" || ic.variable === "ẋ") && ic.order === 0)?.value ||
+          0.0
 
         // Solve using specialized solver
         const result = solveHarmonicOscillator(
@@ -104,9 +169,12 @@ export function useEquationSolver() {
 
         // Get initial conditions
         const initialPosition =
-          state.initialConditions.find((ic) => ic.variable === "y" && ic.order === 0)?.value || 1.0
+          state.initialConditions.find((ic) => (ic.variable === "y" || ic.variable === "x") && ic.order === 0)?.value ||
+          1.0
+
         const initialVelocity =
-          state.initialConditions.find((ic) => ic.variable === "v" && ic.order === 0)?.value || 0.0
+          state.initialConditions.find((ic) => (ic.variable === "v" || ic.variable === "ẋ") && ic.order === 0)?.value ||
+          0.0
 
         // Solve using specialized solver
         const result = solveDampedOscillator(

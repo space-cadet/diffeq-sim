@@ -75,3 +75,57 @@ export function solveDampedOscillator(
   return solveEquation(dampedFunction, [initialPosition, initialVelocity], tStart, tEnd, stepSize, method, { k, c })
 }
 
+// Pendulum equation: d^2θ/dt^2 + (g/L)*sin(θ) = 0
+export function solvePendulum(
+  g: number,
+  L: number,
+  initialAngle: number,
+  initialAngularVelocity: number,
+  tStart: number,
+  tEnd: number,
+  stepSize: number,
+  method: SolverMethod,
+): { t: number[]; y: number[][] } {
+  const pendulumFunction = (t: number, y: number[], params: Record<string, number>): number[] => {
+    return [
+      y[1], // dθ/dt = ω
+      -(params.g / params.L) * Math.sin(y[0]), // dω/dt = -(g/L)*sin(θ)
+    ]
+  }
+
+  return solveEquation(pendulumFunction, [initialAngle, initialAngularVelocity], tStart, tEnd, stepSize, method, {
+    g,
+    L,
+  })
+}
+
+// Lotka-Volterra (predator-prey) equations:
+// dx/dt = α*x - β*x*y
+// dy/dt = δ*x*y - γ*y
+export function solveLotkaVolterra(
+  alpha: number,
+  beta: number,
+  delta: number,
+  gamma: number,
+  initialPrey: number,
+  initialPredator: number,
+  tStart: number,
+  tEnd: number,
+  stepSize: number,
+  method: SolverMethod,
+): { t: number[]; y: number[][] } {
+  const lotkaVolterraFunction = (t: number, y: number[], params: Record<string, number>): number[] => {
+    return [
+      params.alpha * y[0] - params.beta * y[0] * y[1], // dx/dt = α*x - β*x*y
+      params.delta * y[0] * y[1] - params.gamma * y[1], // dy/dt = δ*x*y - γ*y
+    ]
+  }
+
+  return solveEquation(lotkaVolterraFunction, [initialPrey, initialPredator], tStart, tEnd, stepSize, method, {
+    alpha,
+    beta,
+    delta,
+    gamma,
+  })
+}
+

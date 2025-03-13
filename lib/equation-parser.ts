@@ -62,7 +62,6 @@ export function parseEquation(equationString: string): {
     const [leftSide, rightSide] = equationString.split("=").map((s) => s.trim())
 
     // Check for differential notation patterns
-    // This handles various forms like dy/dx, d^2y/dx^2, etc.
     const isDifferential = leftSide.includes("d") && leftSide.includes("/")
 
     // Parse with mathjs
@@ -94,50 +93,63 @@ export function parseEquation(equationString: string): {
     // Determine which symbols are variables vs parameters
     const independentVars = new Set(["x", "t"])
     const dependentVars = new Set<string>()
+    const knownParameters = new Set(["g", "L", "r", "K", "k", "c", "α", "β", "δ", "γ", "ω"])
 
+    // Extract dependent variable from left side
     if (isDifferential) {
-      // Extract dependent variable from left side using more robust regex patterns
-      // This handles forms like dy/dx, d^2y/dx^2, d^2y/dt^2, etc.
+      // Try to match various derivative patterns
+      let match = leftSide.match(/d([a-zA-Z][a-zA-Z0-9]*|\u03B8|\u03C6)\/d[xt]/)
 
-      // First, try to match standard first derivative pattern: dy/dx or dy/dt
-      let match = leftSide.match(/d([a-zA-Z][a-zA-Z0-9]*)\/d[xt]/)
-
-      // If that doesn't work, try to match second derivative pattern: d^2y/dx^2 or d^2y/dt^2
       if (!match) {
-        match = leftSide.match(/d\^?2([a-zA-Z][a-zA-Z0-9]*)\/d[xt]\^?2/)
+        match = leftSide.match(/d\^?2([a-zA-Z][a-zA-Z0-9]*|\u03B8|\u03C6)\/d[xt]\^?2/)
       }
 
-      // If that doesn't work, try a more general pattern
       if (!match) {
-        match = leftSide.match(/d\^?\d*([a-zA-Z][a-zA-Z0-9]*)\/d[xt]\^?\d*/)
+        match = leftSide.match(/d\^?\d*([a-zA-Z][a-zA-Z0-9]*|\u03B8|\u03C6)\/d[xt]\^?\d*/)
       }
 
       if (match && match[1]) {
         dependentVars.add(match[1])
-      } else {
-        // If we can't extract from the left side, check if the left side is a variable
-        if (leftSide.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
-          dependentVars.add(leftSide)
-        }
       }
-    } else {
-      // For algebraic equations, the left side is typically a variable
-      if (leftSide.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
-        dependentVars.add(leftSide)
-      }
+    } else if (leftSide.match(/^[a-zA-Z][a-zA-Z0-9]*$/)) {
+      dependentVars.add(leftSide)
     }
-    // For harmonic oscillator and similar cases, look for common variable names
-    // if they appear in the equation
-    ;["y", "u", "v", "w", "z"].forEach((commonVar) => {
+
+    // Special case for pendulum equation: d^2θ/dt^2 + (g/L)*sin(θ) = 0
+    if (equationString.includes("sin(") || equationString.includes("sin ")) {
+      // Look for variables inside sin, cos, etc.
+      const trigMatch = rightSide.match(/sin\s*$$([a-zA-Z][a-zA-Z0-9]*|\u03B8|\u03C6)$$/)
+      if (trigMatch && trigMatch[1]) {
+        dependentVars.add(trigMatch[1])
+      }
+
+      // For pendulum equation, g and L are parameters
+      if (symbols.has("g")) knownParameters.add("g")
+      if (symbols.has("L")) knownParameters.add("L")
+    }
+
+    // For Greek letters like θ (theta) and φ (phi) that are common in physics
+    if (symbols.has("θ") || symbols.has("\u03B8")) dependentVars.add("θ")
+    if (symbols.has("φ") || symbols.has("\u03C6"))
+      dependentVars.add("φ")
+
+      // For common variable names
+    ;["y", "u", "v", "w", "z", "P", "N"].forEach((commonVar) => {
       if (symbols.has(commonVar) && !dependentVars.has(commonVar)) {
         dependentVars.add(commonVar)
       }
     })
 
-    // Classify remaining symbols as parameters
-    const parameters = Array.from(symbols).filter(
-      (symbol) => !independentVars.has(symbol) && !dependentVars.has(symbol),
-    )
+    // Classify remaining symbols as parameters or variables
+    const parameters = Array.from(symbols).filter((symbol) => {
+      // If it's a known parameter or not a dependent variable
+      return (
+        knownParameters.has(symbol) ||
+        (!independentVars.has(symbol) &&
+          !dependentVars.has(symbol) &&
+          !["sin", "cos", "tan", "exp", "log"].includes(symbol))
+      )
+    })
 
     // Combine dependent and independent variables
     const variables = [...Array.from(independentVars).filter((v) => symbols.has(v)), ...Array.from(dependentVars)]
