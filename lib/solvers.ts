@@ -20,30 +20,31 @@ export function parseEquationToFunction(
     // Split into left and right sides
     const [leftSide, rightSide] = equationString.split("=").map((s) => s.trim())
 
-    // Parse the right side with mathjs
-    const expr = math.parse(rightSide)
-
-    // Compile the expression to a function
-    const compiledExpr = expr.compile()
-
     // Create a function that evaluates the expression with the given variables and parameters
     return (t: number, y: number[], params: Record<string, number>): number[] => {
-      // Create a scope with the current values
-      const scope: Record<string, number> = {
-        t,
-        ...params,
+      try {
+        // Create a scope with the current values
+        const scope: Record<string, number> = {
+          t,
+          ...params,
+        }
+
+        // Add variables to scope
+        variables.forEach((variable, index) => {
+          scope[variable] = y[index]
+        })
+
+        // Evaluate the expression using mathjs evaluate
+        // This is more robust than compiling the expression
+        const result = math.evaluate(rightSide, scope)
+
+        // For now, we're assuming a single equation
+        return [result]
+      } catch (error) {
+        console.error("Error evaluating equation:", error)
+        // Return a default value to prevent crashing
+        return [0]
       }
-
-      // Add variables to scope
-      variables.forEach((variable, index) => {
-        scope[variable] = y[index]
-      })
-
-      // Evaluate the expression
-      const result = compiledExpr.evaluate(scope)
-
-      // For now, we're assuming a single equation
-      return [result]
     }
   } catch (error) {
     console.error("Error parsing equation:", error)
@@ -74,30 +75,36 @@ export function solveEquation(
     // Calculate the next state based on the selected method
     let nextY: number[]
 
-    switch (method) {
-      case "euler":
-        nextY = eulerStep(diffEq, t, y, stepSize, parameters)
-        break
-      case "rk4":
-        nextY = rk4Step(diffEq, t, y, stepSize, parameters)
-        break
-      case "midpoint":
-        nextY = midpointStep(diffEq, t, y, stepSize, parameters)
-        break
-      case "heun":
-        nextY = heunStep(diffEq, t, y, stepSize, parameters)
-        break
-      default:
-        nextY = eulerStep(diffEq, t, y, stepSize, parameters)
+    try {
+      switch (method) {
+        case "euler":
+          nextY = eulerStep(diffEq, t, y, stepSize, parameters)
+          break
+        case "rk4":
+          nextY = rk4Step(diffEq, t, y, stepSize, parameters)
+          break
+        case "midpoint":
+          nextY = midpointStep(diffEq, t, y, stepSize, parameters)
+          break
+        case "heun":
+          nextY = heunStep(diffEq, t, y, stepSize, parameters)
+          break
+        default:
+          nextY = eulerStep(diffEq, t, y, stepSize, parameters)
+      }
+
+      // Update time and state
+      t += stepSize
+      y = nextY
+
+      // Store results
+      tValues.push(t)
+      yValues.push([...y])
+    } catch (error) {
+      console.error("Error in solver step:", error)
+      // Skip this step if there's an error
+      t += stepSize
     }
-
-    // Update time and state
-    t += stepSize
-    y = nextY
-
-    // Store results
-    tValues.push(t)
-    yValues.push([...y])
   }
 
   return { t: tValues, y: yValues }
